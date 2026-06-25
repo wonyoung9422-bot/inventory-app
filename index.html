@@ -195,19 +195,51 @@ function parseCount(text, unitsPerBox) {
 // ---------------------------------------------------------------------------
 // Apps Script API 연동 (배포한 웹 앱 URL로 꼭 바꿔주세요!)
 // ---------------------------------------------------------------------------
-var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw94ynHZvQsn9dAmDx2bdTkPBGivpNEuFlK6SeWrvn05q1JQED31-iKhpXYCZzdpa30/exec';
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxrSyJOOFfVF2PJE28fpGup4ah6aYhQ4pAS1qowioSjJL99EFstux-XoTWldBgGwR8D/exec';
+
+/**
+ * GitHub Pages에서 Apps Script를 부르면 CORS 때문에 fetch가 막혀서,
+ * <script> 태그로 불러오는 JSONP 방식을 쓴다 (CORS 영향을 받지 않음).
+ */
+function jsonp(params) {
+  return new Promise(function (resolve, reject) {
+    var callbackName = 'cb_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+    var timeoutId = setTimeout(function () {
+      cleanup();
+      reject(new Error('요청 시간 초과'));
+    }, 15000);
+
+    function cleanup() {
+      clearTimeout(timeoutId);
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    window[callbackName] = function (data) {
+      cleanup();
+      resolve(data);
+    };
+
+    var query = Object.keys(params).map(function (k) {
+      return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+    }).join('&');
+
+    var script = document.createElement('script');
+    script.src = APPS_SCRIPT_URL + '?' + query + '&callback=' + callbackName;
+    script.onerror = function () {
+      cleanup();
+      reject(new Error('요청 실패 (네트워크 또는 URL 확인 필요)'));
+    };
+    document.body.appendChild(script);
+  });
+}
 
 function apiGetItems() {
-  return fetch(APPS_SCRIPT_URL + '?action=getItems').then(function (r) { return r.json(); });
+  return jsonp({ action: 'getItems' });
 }
 
 function apiPost(action, payload) {
-  payload.action = action;
-  return fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload)
-  }).then(function (r) { return r.json(); });
+  return jsonp({ action: action, data: JSON.stringify(payload) });
 }
 
 // ---------------------------------------------------------------------------
