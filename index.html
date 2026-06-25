@@ -276,8 +276,10 @@ function submitInventoryChunked(results) {
     var chunks = chunkArray(results, CHUNK_SIZE);
     return runSequentially(chunks, function (chunk) {
       var startIndex = results.indexOf(chunk[0]);
-      var totals = chunk.map(function (r) { return r.total; });
-      return apiPost('submitInventoryChunk', { row: row, startIndex: startIndex, totals: totals });
+      var items = chunk.map(function (r) {
+        return { name: r.name, boxes: r.boxes, extra: r.extra, total: r.total, prevQty: r.prevQty };
+      });
+      return apiPost('submitInventoryChunk', { row: row, startIndex: startIndex, items: items });
     });
   });
 }
