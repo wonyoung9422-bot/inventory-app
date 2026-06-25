@@ -242,6 +242,46 @@ function apiPost(action, payload) {
   return jsonp({ action: action, data: JSON.stringify(payload) });
 }
 
+/** 배열을 size개씩 묶어서 반환 */
+function chunkArray(arr, size) {
+  var chunks = [];
+  for (var i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
+  return chunks;
+}
+
+/** 프로미스 배열을 순서대로(동시에 아니라 하나씩) 실행 */
+function runSequentially(items, taskFn) {
+  return items.reduce(function (prevPromise, item) {
+    return prevPromise.then(function () { return taskFn(item); });
+  }, Promise.resolve());
+}
+
+var CHUNK_SIZE = 10;
+
+function saveItemsListChunked(list) {
+  return apiPost('saveItemsListStart', {}).then(function () {
+    var chunks = chunkArray(list, CHUNK_SIZE);
+    return runSequentially(chunks, function (chunk) {
+      var startIndex = list.indexOf(chunk[0]);
+      return apiPost('saveItemsListChunk', { startIndex: startIndex, items: chunk });
+    });
+  }).then(function () {
+    return apiPost('saveItemsListFinish', {});
+  });
+}
+
+function submitInventoryChunked(results) {
+  return apiPost('submitInventoryStart', {}).then(function (startResult) {
+    var row = startResult.row;
+    var chunks = chunkArray(results, CHUNK_SIZE);
+    return runSequentially(chunks, function (chunk) {
+      var startIndex = results.indexOf(chunk[0]);
+      var totals = chunk.map(function (r) { return r.total; });
+      return apiPost('submitInventoryChunk', { row: row, startIndex: startIndex, totals: totals });
+    });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // 상태 & 화면 전환
 // ---------------------------------------------------------------------------
@@ -347,7 +387,7 @@ document.getElementById('saveSettingsBtn').addEventListener('click', function ()
   this.disabled = true;
   this.textContent = '저장 중...';
   var btn = this;
-  apiPost('saveItemsList', { itemsList: list }).then(function () {
+  saveItemsListChunked(list).then(function () {
     btn.disabled = false;
     btn.textContent = '저장하고 시작';
     loadItemsAndStart();
@@ -507,7 +547,7 @@ document.getElementById('clearSelBtn').addEventListener('click', function () { r
 document.getElementById('submitBtn').addEventListener('click', function () {
   this.disabled = true;
   this.textContent = '제출 중...';
-  apiPost('submitInventory', { results: results }).then(function () {
+  submitInventoryChunked(results).then(function () {
     showScreen('screenDone');
   }).catch(function (err) {
     alert('제출 실패: ' + err.message);
