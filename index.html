@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>재고조사</title>
 <style>
   :root {
@@ -12,19 +13,36 @@
     --gray: #6b7280;
   }
   * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
     font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-    margin: 0; padding: 16px; background: #f3f4f6; color: #111827;
+    margin: 0;
+    padding: 12px;
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    background: #f3f4f6;
+    color: #111827;
     -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+    max-width: 100vw;
   }
   .screen { display: none; }
   .screen.active { display: block; }
   .card {
-    background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 16px;
+    background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 12px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    max-width: 100%;
+    overflow: hidden;
   }
+  .top-links {
+    display: flex; flex-wrap: wrap; gap: 6px 10px;
+    justify-content: flex-end; margin-bottom: 8px; font-size: 13px;
+  }
+  .top-links a { color: var(--gray); text-decoration: none; white-space: nowrap; }
   .progress-label { text-align: center; color: var(--gray); font-size: 16px; margin-bottom: 8px; }
-  .item-name { text-align: center; font-size: 32px; font-weight: 700; margin: 8px 0 20px; }
+  .item-name {
+    text-align: center; font-size: clamp(20px, 6vw, 32px); font-weight: 700;
+    margin: 8px 0 16px; line-height: 1.3; word-break: keep-all;
+  }
   .mic-btn {
     display: block; margin: 0 auto 16px; width: 120px; height: 120px; border-radius: 50%;
     background: var(--blue); color: #fff; font-size: 40px; border: none;
@@ -33,23 +51,30 @@
   @keyframes pulse { 0%{transform:scale(1);} 50%{transform:scale(1.08);} 100%{transform:scale(1);} }
   .raw-text { text-align: center; color: var(--gray); font-size: 15px; min-height: 22px; margin-bottom: 8px; }
   .result-box {
-    text-align: center; font-size: 28px; font-weight: 700; padding: 16px; border-radius: 12px;
-    background: #eff6ff; margin-bottom: 16px; min-height: 40px;
+    text-align: center; font-size: clamp(18px, 5vw, 28px); font-weight: 700; padding: 14px;
+    border-radius: 12px; background: #eff6ff; margin-bottom: 16px; min-height: 40px;
+    line-height: 1.35; word-break: keep-all;
   }
-  .manual-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .manual-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; align-items: stretch; }
   .manual-row input {
-    flex: 1; font-size: 20px; padding: 10px; border-radius: 10px; border: 1px solid #d1d5db; text-align: center;
+    flex: 1 1 120px; min-width: 0; font-size: 18px; padding: 12px 10px;
+    border-radius: 10px; border: 1px solid #d1d5db; text-align: center;
   }
+  .manual-row .btn-edit { flex: 0 0 auto; min-width: 64px; padding: 12px 14px; }
   button {
-    font-size: 18px; padding: 14px; border-radius: 12px; border: none; cursor: pointer;
+    font-size: 17px; padding: 14px 16px; border-radius: 12px; border: none; cursor: pointer;
+    min-height: 48px; touch-action: manipulation;
   }
   .btn-row { display: flex; gap: 10px; }
   .btn-row button { flex: 1; }
   .btn-confirm { background: var(--green); color: #fff; }
   .btn-edit { background: #e5e7eb; color: #111827; }
   .btn-primary { background: var(--blue); color: #fff; width: 100%; }
-  table { width: 100%; border-collapse: collapse; font-size: 15px; }
-  th, td { padding: 10px 6px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; }
+  table { width: 100%; min-width: 280px; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 10px 6px; border-bottom: 1px solid #e5e7eb; text-align: left; vertical-align: top; }
+  th { white-space: nowrap; font-size: 13px; }
+  td:first-child { max-width: 90px; word-break: keep-all; }
   tr.anomaly { background: #fef3c7; }
   tr.selected { outline: 2px solid var(--blue); }
   .qty-cell { font-weight: 700; }
@@ -57,11 +82,45 @@
   h2 { margin-top: 0; }
   #swapBar { display: none; margin-bottom: 12px; }
   .chip { display:inline-block; padding:4px 10px; border-radius:999px; background:#e5e7eb; font-size:13px; margin-right:6px; }
-  .setting-row { display:flex; gap:8px; margin-bottom:8px; align-items:center; }
-  .setting-row .order-num { width:24px; color: var(--gray); font-size:14px; }
-  .setting-row input[type="text"] { flex:2; font-size:16px; padding:10px; border-radius:10px; border:1px solid #d1d5db; }
-  .setting-row input[type="number"] { flex:1; font-size:16px; padding:10px; border-radius:10px; border:1px solid #d1d5db; }
-  .setting-row .del-row { background:#fee2e2; color:var(--red); padding:10px 12px; }
+  .setting-row {
+    display: grid;
+    grid-template-columns: 28px 1fr minmax(72px, 88px) auto;
+    gap: 6px;
+    margin-bottom: 10px;
+    align-items: center;
+  }
+  .setting-row .order-num { color: var(--gray); font-size: 13px; text-align: center; }
+  .setting-row input[type="text"],
+  .setting-row input[type="number"] {
+    width: 100%; min-width: 0; font-size: 16px; padding: 10px 8px;
+    border-radius: 10px; border: 1px solid #d1d5db;
+  }
+  .setting-row .del-row {
+    background: #fee2e2; color: var(--red); padding: 10px 10px;
+    font-size: 14px; min-height: 44px; white-space: nowrap;
+  }
+  .mobile-banner {
+    background: #fef3c7; color: #92400e; padding: 12px; border-radius: 10px;
+    margin-bottom: 12px; font-size: 13px; line-height: 1.5; word-break: break-all;
+  }
+  @media (max-width: 480px) {
+    body { padding: 8px; }
+    .card { padding: 14px; border-radius: 12px; }
+    .mic-btn { width: 100px; height: 100px; font-size: 36px; }
+    .manual-row input { flex: 1 1 100%; }
+    .manual-row .btn-edit { flex: 1 1 100%; width: 100%; }
+    .setting-row {
+      grid-template-columns: 24px 1fr 72px;
+      grid-template-rows: auto auto;
+    }
+    .setting-row .order-num { grid-row: 1 / 3; align-self: start; padding-top: 12px; }
+    .setting-row .s-name { grid-column: 2 / 4; }
+    .setting-row .s-units { grid-column: 2; }
+    .setting-row .del-row { grid-column: 3; grid-row: 2; padding: 8px; min-height: 40px; }
+    h2 { font-size: 1.15rem; }
+    #swapBar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    #swapBar .btn-edit { flex: 1 1 auto; min-width: 0; }
+  }
 </style>
 </head>
 <body>
@@ -82,10 +141,9 @@
 <!-- 진행 화면 -->
 <div id="screenProgress" class="screen">
   <div class="card">
-    <div style="text-align:right;margin-bottom:4px;">
-      <a href="#" id="openHistoryLink" class="small-muted">지난 기록 보기</a>
-      &nbsp;|&nbsp;
-      <a href="#" id="openSettingsLink" class="small-muted">품목 설정 수정</a>
+    <div class="top-links">
+      <a href="#" id="openHistoryLink">지난 기록</a>
+      <a href="#" id="openSettingsLink">품목 설정</a>
     </div>
     <div class="progress-label" id="progressLabel">1 / 30</div>
     <div class="item-name" id="itemName">품목명</div>
@@ -95,7 +153,7 @@
     <div class="result-box" id="resultBox">음성 또는 직접 입력</div>
 
     <div class="manual-row">
-      <input type="text" id="textInput" placeholder='예: 4박스 80개' style="flex:1;font-size:18px;padding:10px;border-radius:10px;border:1px solid #d1d5db;">
+      <input type="text" id="textInput" placeholder="예: 4박스 80개">
       <button id="parseTextBtn" class="btn-edit">해석</button>
     </div>
 
@@ -122,10 +180,12 @@
       <button id="swapBtn" class="btn-edit">값 교체</button>
       <button id="clearSelBtn" class="btn-edit">선택 취소</button>
     </div>
+    <div class="table-wrap">
     <table>
       <thead><tr><th>품목</th><th>입력</th><th>수량</th><th>전날</th></tr></thead>
       <tbody id="reviewBody"></tbody>
     </table>
+    </div>
   </div>
   <button id="submitBtn" class="btn-primary">제출하기</button>
 </div>
@@ -152,10 +212,12 @@
 <div id="screenHistoryDetail" class="screen">
   <div class="card">
     <h2 id="historyDetailTitle">기록</h2>
+    <div class="table-wrap">
     <table>
       <thead><tr><th>품목</th><th>입력</th><th>수량</th><th>전날</th></tr></thead>
       <tbody id="historyDetailBody"></tbody>
     </table>
+    </div>
   </div>
   <button id="historyDetailBackBtn" class="btn-edit" style="width:100%;">날짜 목록으로</button>
 </div>
@@ -216,13 +278,75 @@ function parseCount(text, unitsPerBox) {
 }
 
 // ---------------------------------------------------------------------------
-// Apps Script API 연동 (배포한 웹 앱 URL로 꼭 바꿔주세요!)
+// Apps Script API 연동
+// Apps Script URL로 열면 google.script.run (안정적)
+// GitHub Pages로 열면 JSONP (저장이 불안정할 수 있음)
 // ---------------------------------------------------------------------------
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxrSyJOOFfVF2PJE28fpGup4ah6aYhQ4pAS1qowioSjJL99EFstux-XoTWldBgGwR8D/exec';
+var APP_VERSION = 'v7';
+
+function useGoogleScript() {
+  return typeof google !== 'undefined' && google.script && google.script.run;
+}
+
+/** Apps Script URL이면 google.script.run, GitHub면 JSONP */
+function apiCall(action, payload) {
+  payload = payload || {};
+  if (useGoogleScript()) {
+    return runGoogleScriptDirect(action, payload);
+  }
+  return jsonpApi(action, payload);
+}
+
+function runGoogleScriptDirect(action, payload) {
+  return new Promise(function (resolve, reject) {
+    var done = false;
+    var timeoutId = setTimeout(function () {
+      if (done) return;
+      done = true;
+      reject(new Error('서버 응답 없음 (30초). Code.gs·Index.html 저장 후 배포 > 새 버전 했는지 확인하세요.'));
+    }, 30000);
+
+    function ok(data) {
+      if (done) return;
+      done = true;
+      clearTimeout(timeoutId);
+      if (data && data.error) reject(new Error(data.error));
+      else resolve(data);
+    }
+    function fail(err) {
+      if (done) return;
+      done = true;
+      clearTimeout(timeoutId);
+      reject(new Error((err && err.message) ? err.message : String(err)));
+    }
+
+    var r = google.script.run.withSuccessHandler(ok).withFailureHandler(fail);
+    if (action === 'getItems') r.getItemsForClient();
+    else if (action === 'saveAllItems') r.saveAllItemsForClient(payload.items || []);
+    else if (action === 'submitInventory') r.submitInventoryForClient(payload.results || []);
+    else if (action === 'getHistoryDates') r.getHistoryDatesForClient();
+    else if (action === 'getHistoryDetail') r.getHistoryDetailForClient(payload.date);
+    else if (action === 'diagnostics') r.getDiagnosticsForClient();
+    else fail({ message: 'unknown action: ' + action });
+  });
+}
+
+function runGoogleScript(action, payload) {
+  return runGoogleScriptDirect(action, payload);
+}
+
+function jsonpApi(action, payload) {
+  if (action === 'getItems') return jsonp({ action: 'getItems' });
+  if (action === 'saveAllItems') return saveItemsListChunked(payload.items || []);
+  if (action === 'submitInventory') return submitInventoryChunked(payload.results || []);
+  if (action === 'getHistoryDates') return jsonp({ action: 'getHistoryDates' });
+  if (action === 'getHistoryDetail') return jsonp({ action: 'getHistoryDetail', date: payload.date });
+  return Promise.reject(new Error('지원하지 않는 action: ' + action));
+}
 
 /**
- * GitHub Pages에서 Apps Script를 부르면 CORS 때문에 fetch가 막혀서,
- * <script> 태그로 불러오는 JSONP 방식을 쓴다 (CORS 영향을 받지 않음).
+ * GitHub Pages용 JSONP (CORS 우회)
  */
 function jsonp(params) {
   return new Promise(function (resolve, reject) {
@@ -262,7 +386,7 @@ function jsonp(params) {
 }
 
 function apiGetItems() {
-  return jsonp({ action: 'getItems' });
+  return apiCall('getItems');
 }
 
 function apiPost(action, payload) {
@@ -288,22 +412,27 @@ function runSequentially(items, taskFn) {
 var CHUNK_SIZE = 3;
 
 function saveItemsListChunked(list) {
-  return apiPost('saveItemsListStart', {}).then(function (res) {
-    if (res && res.error) throw new Error(res.error);
-    return runSequentially(list, function (item, index) {
-      return jsonp({
-        action: 'saveItem',
-        i: index,
-        name: item.name,
-        units: item.unitsPerBox
-      });
+  if (useGoogleScript()) return apiCall('saveAllItems', { items: list });
+  var total = list.length;
+  var saved = 0;
+  return runSequentially(list, function (item, index) {
+    return jsonp({
+      action: 'saveItem',
+      i: index,
+      name: item.name,
+      units: item.unitsPerBox
+    }).then(function () {
+      saved++;
+      var btn = document.getElementById('saveSettingsBtn');
+      if (btn) btn.textContent = '저장 중... (' + saved + '/' + total + ')';
     });
   }).then(function () {
-    return apiPost('saveItemsListFinish', {});
+    return jsonp({ action: 'saveItemsListFinish' });
   });
 }
 
 function submitInventoryChunked(results) {
+  if (useGoogleScript()) return apiCall('submitInventory', { results: results });
   return apiPost('submitInventoryStart', {}).then(function (startResult) {
     if (startResult && startResult.error) throw new Error(startResult.error);
     var row = startResult.row;
@@ -337,10 +466,16 @@ function looksLikePlaceholder(data) {
 }
 
 function loadItemsAndStart() {
+  var loadingEl = document.getElementById('loading');
+  loadingEl.innerHTML = useGoogleScript()
+    ? '<p>서버에서 품목 불러오는 중...</p><p class="small-muted">처음이면 Google 권한 허용 창이 뜰 수 있어요.</p><p class="small-muted">앱 ' + APP_VERSION + '</p>'
+    : '<p>품목을 불러오는 중...</p><p class="small-muted">앱 ' + APP_VERSION + '</p>';
+
   apiGetItems().then(function (data) {
-    if (data && data.error) throw new Error(data.error);
+    if (!Array.isArray(data)) throw new Error('품목 데이터 형식 오류');
+    if (data.error) throw new Error(data.error);
     items = data;
-    document.getElementById('loading').style.display = 'none';
+    loadingEl.style.display = 'none';
     if (looksLikePlaceholder(data)) {
       renderSettingsRows(data.length ? data : []);
       showScreen('screenSettings');
@@ -351,12 +486,31 @@ function loadItemsAndStart() {
     showScreen('screenProgress');
     renderCurrentItem();
   }).catch(function (err) {
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('loading').innerHTML = '<p style="color:red">불러오기 실패: ' + err.message + '<br>Index.html 맨 위 APPS_SCRIPT_URL이 올바른지, Apps Script에서 initializeSheets()를 먼저 실행했는지 확인하세요.</p>';
+    loadingEl.style.display = 'block';
+    loadingEl.innerHTML =
+      '<p style="color:red">불러오기 실패: ' + err.message + '</p>' +
+      '<p class="small-muted">1) Apps Script에서 Code.gs·Index.html 저장 후 <b>배포 &gt; 새 버전</b> 했는지 확인<br>' +
+      '2) 아래 URL로 접속해 보세요:<br><a href="' + APPS_SCRIPT_URL + '">' + APPS_SCRIPT_URL + '</a></p>' +
+      '<button class="btn-primary" style="margin-top:12px;" onclick="location.reload()">다시 시도</button>';
   });
 }
 
 loadItemsAndStart();
+
+if (typeof google === 'undefined') {
+  setTimeout(function () {
+    if (useGoogleScript() && items.length === 0 && document.getElementById('loading').style.display !== 'none') {
+      loadItemsAndStart();
+    }
+  }, 1500);
+}
+
+if (location.hostname.indexOf('github.io') !== -1) {
+  var warn = document.createElement('div');
+  warn.className = 'mobile-banner';
+  warn.innerHTML = 'GitHub 주소는 저장이 불안정할 수 있어요. <b>Apps Script URL</b>을 사용하세요.<br><a href="' + APPS_SCRIPT_URL + '" style="color:#2563eb;">앱 열기</a>';
+  document.body.insertBefore(warn, document.body.firstChild);
+}
 
 // ---------------------------------------------------------------------------
 // 설정 화면
@@ -430,7 +584,7 @@ document.getElementById('saveSettingsBtn').addEventListener('click', function ()
   }).catch(function (err) {
     var msg = err.message || String(err);
     if (msg.indexOf('요청 실패') !== -1 || msg.indexOf('시간 초과') !== -1) {
-      msg += '\n\n→ Apps Script에서 Code.gs를 최신으로 붙여넣고\n   배포 > 배포 관리 > 새 버전 으로 다시 배포해 주세요.';
+      msg += '\n\nApps Script 웹앱 URL로 접속해 보세요:\n' + APPS_SCRIPT_URL;
     }
     alert('저장 실패: ' + msg);
     btn.disabled = false;
@@ -590,7 +744,11 @@ document.getElementById('submitBtn').addEventListener('click', function () {
   submitInventoryChunked(results).then(function () {
     showScreen('screenDone');
   }).catch(function (err) {
-    alert('제출 실패: ' + err.message);
+    var msg = err.message || String(err);
+    if (/권한|access|permission|액세스/i.test(msg)) {
+      msg += '\n\n[해결] Apps Script → 배포 → 배포 관리 → ✏️ → 실행: 나 → 새 버전 배포';
+    }
+    alert('제출 실패: ' + msg);
     document.getElementById('submitBtn').disabled = false;
     document.getElementById('submitBtn').textContent = '제출하기';
   });
@@ -629,11 +787,11 @@ document.getElementById('openHistoryLink').addEventListener('click', function (e
 });
 
 function apiGetHistoryDates() {
-  return jsonp({ action: 'getHistoryDates' });
+  return apiCall('getHistoryDates');
 }
 
 function apiGetHistoryDetail(date) {
-  return jsonp({ action: 'getHistoryDetail', date: date });
+  return apiCall('getHistoryDetail', { date: date });
 }
 
 function openHistoryDetail(date) {
